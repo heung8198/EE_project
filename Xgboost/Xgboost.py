@@ -87,3 +87,4 @@ sns.distplot(abs(predictions - y_test))
 plt.title("오차값(절대값) 분포")
 plt.show()
 
+print(predictions)
