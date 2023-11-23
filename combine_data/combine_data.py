@@ -13,7 +13,7 @@ def combine(weather_path):
 
 
     bike = pd.read_csv(
-        r"C:\Users\gmdwh\Documents\midterm_project\22년_날짜별이용건수_gwangjin.csv",
+        r"C:\Users\gmdwh\Documents\EE_project\22년_날짜별이용건수_gwangjin.csv",
         encoding="utf-8",
         low_memory=False,
     )
@@ -31,7 +31,7 @@ def combine(weather_path):
     bike = bike.merge(df, on=["월", "일", "대여시간"])
 
     bike.to_csv(
-        r"C:\Users\gmdwh\Documents\midterm_project\bike.csv",
+        r"C:\Users\gmdwh\Documents\EE_project\bike.csv",
         index=False,
         encoding="euc-kr")
 
