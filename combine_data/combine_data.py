@@ -29,6 +29,7 @@ def combine(weather_path):
     bike["요일"] = bike["대여일자"].dt.dayofweek
 
     bike = bike.merge(df, on=["월", "일", "대여시간"])
+    bike.drop(bike[(bike["대여시간"] > 1) & (bike["대여시간"] < 7)].index, inplace=True)
 
     bike.to_csv(
         r"C:\Users\gmdwh\Documents\EE_project\bike.csv",

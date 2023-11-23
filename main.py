@@ -29,10 +29,10 @@ if __name__ == '__main__':
     startday = '20220101'
     endday = '20221231'
 
-    file3 = os.listdir(r"C:\Users\gmdwh\Documents\midterm_project")
+    file3 = os.listdir(r"C:\Users\gmdwh\Documents\EE_project")
     for f in file3:
-        if f.startswith('bike'):
-            file_name = os.path.join(r"C:\Users\gmdwh\Documents\midterm_project", f)
+        if f.startswith('bike.csv'):
+            file_name = os.path.join(r"C:\Users\gmdwh\Documents\EE_project", f)
             os.remove(file_name)
 
     cr.GetGenData(startday, endday)
