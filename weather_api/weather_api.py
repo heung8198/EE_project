@@ -49,6 +49,7 @@ queryParams = "?" + urlencode(
         quote_plus("ny"): ny,
         quote_plus("dataType"): "json",
         quote_plus("numOfRows"): "60",
+        quote_plus("pageNo"): "1",
     }
 )  # 페이지로 안나누고 한번에 받아오기 위해 numOfRows=60으로 설정해주었다
 
@@ -56,28 +57,51 @@ queryParams = "?" + urlencode(
 # 값 요청 (웹 브라우저 서버에서 요청 - url주소와 파라미터)
 res = requests.get(url + queryParams, verify=False)  # verify=False이거 안 넣으면 에러남ㅜㅜ
 items = res.json().get("response").get("body").get("items")  # 데이터들 아이템에 저장
-# print(items)# 테스트
 
-weather_data = dict()
+# 저장할 데이터 항목의 이름을 입력합니다.
+column_names = ["대여일자", "대여시간", "기온(°C)", "강수량(mm)", "풍속(m/s)", "습도(%)"]
+data_rows = []
 
+# 각 예보 카테고리에 대한 변수를 초기화합니다.
+data_dict = {}
+
+# 'category' 값이 T1H, RN1, WSD, REH인 경우에 대해 처리합니다.
 for item in items["item"]:
-    # 기온
-    if item["category"] == "T1H":
-        weather_data["기온"] = item["fcstValue"]
-    # 1시간 동안 강수량
-    if item["category"] == "RN1":
-        weather_data["강수량"] = item["fcstValue"]
-        if weather_data["강수량"] == "강수없음":
-            weather_data["강수량"] = 0
-    # 풍속
-    if item["category"] == "WSD":
-        weather_data["풍속"] = item["fcstValue"]
-    # 습도
-    if item["category"] == "REH":
-        weather_data["습도"] = item["fcstValue"]
+    # 해당 'category'에 따라 데이터를 저장합니다.
+    if item["category"] in ["T1H", "RN1", "WSD", "REH"]:
+        if item["fcstTime"] not in data_dict:
+            data_dict[item["fcstTime"]] = {}
+        if item["category"] == "T1H":
+            data_dict[item["fcstTime"]]["기온(°C)"] = int(item["fcstValue"])
+        elif item["category"] == "RN1":
+            if item["fcstValue"] == "강수없음":
+                data_dict[item["fcstTime"]]["강수량(mm)"] = 0
+            else:
+                data_dict[item["fcstTime"]]["강수량(mm)"] = int(item["fcstValue"])
+        elif item["category"] == "WSD":
+            data_dict[item["fcstTime"]]["풍속(m/s)"] = int(item["fcstValue"])
+        elif item["category"] == "REH":
+            data_dict[item["fcstTime"]]["습도(%)"] = int(item["fcstValue"])
 
+# 1시간 단위로 6시간동안 각 예보 값을 저장합니다.
+for fcstTime, data in data_dict.items():
+    data_rows.append(
+        [
+            item["fcstDate"],
+            fcstTime,
+            data.get("기온(°C)"),
+            data.get("강수량(mm)"),
+            data.get("풍속(m/s)"),
+            data.get("습도(%)"),
+        ]
+    )
 
-print("response: ", weather_data)
-# columns_name = ["기온", "강수량", "풍속", "습도"]
-# weather_df = pd.DataFrame(data=weather_data, index=base_date)
-# print(weather_df)
+# 데이터를 데이터프레임에 추가합니다.
+weather_data = pd.DataFrame(data_rows, columns=column_names)
+# 시간대별로 데이터를 불러와서 저장
+
+# csv 파일로 데이터를 저장합니다.
+filename = "C:/Users/user/Documents/EE_project/날씨예보_6시간.csv"
+weather_data.to_csv(filename, index=False, encoding="utf-8-sig")
+
+print(f"{filename} 파일이 저장되었습니다.")
