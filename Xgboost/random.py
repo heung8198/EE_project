@@ -5,44 +5,44 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 
-#%matplotlib_inline : pycharm 에서는 필요없음
+#matplotlib_inline : pycharm 에서는 필요없음
 
-# # 그래프에서 격자로 숫자 범위가 눈에 잘 띄도록 ggplot 스타일을 사용
-# plt.style.use('ggplot')
-# # 그래프에서 마이너스 폰트 깨지는 문제에 대한 대처
-#
-#
-# df = pd.read_csv(r"C:\Users\user\Documents\EE_project\ttukseom.csv",encoding='cp949')
-#
-#
-# # P~V열 지우기
-# df = df.drop(columns=['요일_0', '요일_1', '요일_2', '요일_3', '요일_4', '요일_5', '요일_6'])
-#
-# # 대여시간 열의 값에 ":00:00" 추가
-# df['대여일자'] = df['일시']
-#
-# # 원래의 '대여일자'와 '대여시간' 열 삭제
-# df = df.drop(['일시'], axis=1)
-# df.to_csv('train.csv', index=False,encoding="euc-kr")
-#
-# train = pd.read_csv(r"C:\Users\user\Documents\EE_project\Xgboost\train.csv", parse_dates=["대여일자"],encoding='cp949')
-# print(train.shape)
-# train.info()
+# 그래프에서 격자로 숫자 범위가 눈에 잘 띄도록 ggplot 스타일을 사용
+plt.style.use('ggplot')
+# 그래프에서 마이너스 폰트 깨지는 문제에 대한 대처
+
+
+df = pd.read_csv(r"C:\Users\user\Documents\EE_project\ttukseom.csv",encoding='cp949')
+
+
+# P~V열 지우기
+df = df.drop(columns=['요일_0', '요일_1', '요일_2', '요일_3', '요일_4', '요일_5', '요일_6'])
+
+# 대여시간 열의 값에 ":00:00" 추가
+df['대여일자'] = df['일시']
+
+# 원래의 '대여일자'와 '대여시간' 열 삭제
+df = df.drop(['일시'], axis=1)
+df.to_csv('train.csv', index=False,encoding="euc-kr")
+
+train = pd.read_csv(r"C:\Users\user\Documents\EE_project\Xgboost\train.csv", parse_dates=["대여일자"],encoding='cp949')
+print(train.shape)
+train.info()
 
 # 엑셀 파일 읽어오기
 # CSV 파일 읽어오기
-# df = pd.read_csv(r"C:\Users\user\Documents\EE_project\날씨예보_6시간.csv", encoding='utf-8')
-#
-# # 대여일자 및 대여시간 열 조합하여 날짜와 시간으로 표현
-# df['대여일자'] = pd.to_datetime(df['대여일자'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
-# df['대여일자'] = df['대여일자'].astype(str) + ' ' + df['대여시간'].astype(str)
-#
-#
-# # 대여시간 열 삭제
-# df.drop('대여시간', axis=1, inplace=True)
-#
-# # 수정된 내용을 새로운 CSV 파일로 저장
-# df.to_csv('test.csv', index=False, encoding='euc-kr')
+df = pd.read_csv(r"C:\Users\user\Documents\EE_project\날씨예보_6시간.csv", encoding='utf-8')
+
+# 대여일자 및 대여시간 열 조합하여 날짜와 시간으로 표현
+df['대여일자'] = pd.to_datetime(df['대여일자'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
+df['대여일자'] = df['대여일자'].astype(str) + ' ' + df['대여시간'].astype(str)
+
+
+# 대여시간 열 삭제
+df.drop('대여시간', axis=1, inplace=True)
+
+# 수정된 내용을 새로운 CSV 파일로 저장
+df.to_csv('test.csv', index=False, encoding='euc-kr')
 
 
 
@@ -50,7 +50,7 @@ test = pd.read_csv(r"C:\Users\user\Documents\EE_project\Xgboost\test.csv",encodi
 train = pd.read_csv(r"C:\Users\user\Documents\EE_project\Xgboost\train.csv",encoding='cp949')
 
 
-categorical_feature_names = ["요일"]
+categorical_feature_names = ['요일']
 
 for var in categorical_feature_names:
     train[var] = train[var].astype("category")
