@@ -151,7 +151,7 @@ station = [
 data = data[data["대여소이름"].isin(station)]
 data.to_csv("실시간데이터.csv", index=False, encoding="utf-8-sig")
 
-data = pd.read_csv(r"C:\Users\user\Documents\EE_project\실시간데이터.csv")
+data = pd.read_csv(r"C:\Users\user\Documents\EE_project\bike_map\실시간데이터.csv")
 # print(data.head())
 
 import folium
