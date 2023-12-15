@@ -4,8 +4,7 @@ import urllib
 from urllib.parse import urlencode
 from urllib.parse import quote_plus
 import pandas as pd
-import numpy
-import seaborn
+import re
 
 # 기상청_동네 예보 조회 서비스 api 데이터 url 주소, 초단기이기때문에 getUltraSrtFcst 사용
 url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst"
@@ -64,20 +63,32 @@ data_rows = []
 
 # 각 예보 카테고리에 대한 변수를 초기화합니다.
 data_dict = {}
-
+# 날짜와 시간 처리를 위한 수정
+# 날짜와 시간 형식을 변경하는 함수
+def format_date_and_time(fcstDate, fcstTime):
+    # fcstTime을 'HHMM' 형식에서 'HH' 형식으로 변경
+    fcstTimeFormatted = fcstTime[:2]
+    fcst_datetime = datetime.strptime(fcstDate + fcstTimeFormatted, "%Y%m%d%H")
+    return fcst_datetime.strftime("%Y-%m-%d"), fcst_datetime.strftime("%H")
 # 'category' 값이 T1H, RN1, WSD, REH인 경우에 대해 처리합니다.
 for item in items["item"]:
     # 해당 'category'에 따라 데이터를 저장합니다.
     if item["category"] in ["T1H", "RN1", "WSD", "REH"]:
         if item["fcstTime"] not in data_dict:
             data_dict[item["fcstTime"]] = {}
+            # 날짜와 시간 형식 변경
+            formatted_date, formatted_time = format_date_and_time(item["fcstDate"], item["fcstTime"])
         if item["category"] == "T1H":
             data_dict[item["fcstTime"]]["기온(°C)"] = int(item["fcstValue"])
         elif item["category"] == "RN1":
-            if item["fcstValue"] == "강수없음":
-                data_dict[item["fcstTime"]]["강수량(mm)"] = 0
+                # 정확한 형식에 맞게 정규 표현식 수정
+            numeric_value = re.findall("\d+\.\d+|\d+", item["fcstValue"])
+            if numeric_value:
+                # 리스트의 첫 번째 값(소수점 포함 숫자)을 float로 변환하여 저장
+                data_dict[item["fcstTime"]]["강수량(mm)"] = float(numeric_value[0])
             else:
-                data_dict[item["fcstTime"]]["강수량(mm)"] = int(item["fcstValue"])
+                # 예외 처리: 추출된 값이 없거나 예상과 다른 경우 0.0 사용
+                data_dict[item["fcstTime"]]["강수량(mm)"] = 0.0
         elif item["category"] == "WSD":
             data_dict[item["fcstTime"]]["풍속(m/s)"] = int(item["fcstValue"])
         elif item["category"] == "REH":
@@ -85,10 +96,11 @@ for item in items["item"]:
 
 # 1시간 단위로 6시간동안 각 예보 값을 저장합니다.
 for fcstTime, data in data_dict.items():
+    formatted_date, formatted_time = format_date_and_time(item["fcstDate"], fcstTime + "00")
     data_rows.append(
         [
-            item["fcstDate"],
-            fcstTime,
+            formatted_date,
+            formatted_time,
             data.get("기온(°C)"),
             data.get("강수량(mm)"),
             data.get("풍속(m/s)"),
