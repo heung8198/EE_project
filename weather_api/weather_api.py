@@ -63,6 +63,18 @@ data_rows = []
 
 # 각 예보 카테고리에 대한 변수를 초기화합니다.
 data_dict = {}
+def add_weekday_columns(df):
+    # 요일에 대한 열을 추가
+    weekdays = ["요일_0", "요일_1", "요일_2", "요일_3", "요일_4", "요일_5", "요일_6"]
+    for weekday in weekdays:
+        df[weekday] = 0
+
+    # 각 행의 날짜에 따라 해당 요일 열에 1을 설정
+    for index, row in df.iterrows():
+        weekday = datetime.strptime(row["대여일자"], "%Y-%m-%d").weekday()
+        df.at[index, "요일_" + str(weekday)] = 1
+
+    return df
 # 날짜와 시간 처리를 위한 수정
 # 날짜와 시간 형식을 변경하는 함수
 def format_date_and_time(fcstDate, fcstTime):
@@ -108,10 +120,12 @@ for fcstTime, data in data_dict.items():
         ]
     )
 
-# 데이터를 데이터프레임에 추가합니다.
-weather_data = pd.DataFrame(data_rows, columns=column_names)
 # 시간대별로 데이터를 불러와서 저장
+# 데이터 프레임 생성
+weather_data = pd.DataFrame(data_rows, columns=column_names)
 
+# 요일 열 추가
+weather_data = add_weekday_columns(weather_data)
 # csv 파일로 데이터를 저장합니다.
 filename = "C:/Users/user/Documents/EE_project/날씨예보_6시간.csv"
 weather_data.to_csv(filename, index=False, encoding="utf-8-sig")
