@@ -23,10 +23,19 @@ from django.urls import path
 from django.shortcuts import redirect
 from myapp.views import bike_stations
 
+from django.contrib import admin
+from django.urls import path, include
+from django.urls import path
+from myapp import views
+
 urlpatterns = [
-    path('bike-stations/', bike_stations, name='bike-stations'),
-    path('', lambda request: redirect('bike-stations/', permanent=False)),
+    path('admin/', admin.site.urls),
+    path('bike-stations/', include('myapp.urls')),
+    # 여기서 'your_app_name'은 해당 앱의 이름입니다.
+    # 기존의 URL 패턴들
+    # path('fetch-bike-data/', views.fetch_bike_data_view, name='fetch-bike-data'),
 ]
+
 
 
 

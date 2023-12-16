@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>광진구 자전거 대여소 지도</title>
+    <style>
+        .container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .bike-list {
+            flex: 1;
+            padding: 10px;
+        }
+        .bike-map {
+            flex: 2;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="bike-list">
+            <h1>광진구 따릉이 대여소</h1>
+            {% if shortage_stations %}
+                <p>다음 대여소에서 자전거가 부족합니다:</p>
+                <table>
+                    <tr>
+                        <th>대여소 이름</th>
+                        <th>주차된 자전거 수</th>
+                    </tr>
+                    {% for station in shortage_stations %}
+                        <tr>
+                            <td>{{ station.station_name }}</td>
+                            <td>{{ station.parking_bike_count }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <p>현재 자전거가 부족한 대여소는 없습니다.</p>
+            {% endif %}
+        </div>
+        <div class="bike-map">
+            {% include "bike_map.html" %}
+        </div>
+    </div>
+</body>
+</html>

@@ -8,21 +8,14 @@ from folium import plugins
 from django.shortcuts import render
 from folium import plugins
 from .models import BikeStation
+from django.db.utils import IntegrityError
+from django.http import HttpResponse
 
 # 이하 함수 정의들...
 
 def fetch_bike_data():
     # API 호출 및 데이터 처리 코드
     # 예: requests.get('API_URL')...
-    # 데이터베이스 연결 정보 설정
-    user = "postgres"
-    password = "john0312"
-    host = "localhost"
-    port = "5432"
-    database = "realtimebike"
-    table_name = "realtimebike"
-    # 데이터베이스 엔진 생성
-    engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{database}")
     # """
     # 서울특별시 공공자전거 실시간 대여정보 API 데이터 가져오기
     # 대여소별 실시간 자전거 대여가능 건수, 거치율, 대여소 위치정보를 제공.
@@ -170,7 +163,15 @@ def fetch_bike_data():
     ]
     data = data[data["대여소이름"].isin(station)]
     data = data[["거치대개수", "대여소이름", "주차된 자전거 수", "거치율", "위도", "경도", "대여소ID"]]
-
+    # 데이터베이스 연결 정보 설정
+    user = "postgres"
+    password = "john0312"
+    host = "localhost"
+    port = "5432"
+    database = "realtimebike"
+    table_name = "realtimebike"
+    # 데이터베이스 엔진 생성
+    engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{database}")
     # DataFrame을 PostgreSQL에 저장
     # 데이터베이스에 저장하는 코드를 try-except 블록으로 감싸 오류 처리
     try:
@@ -188,6 +189,20 @@ def fetch_bike_data():
 
     # 결측치를 처리하는 방법 (예: 0으로 채우기)
     data.fillna(0, inplace=True)
+    # 데이터베이스에 저장하는 로직
+    for index, row in data.iterrows():
+        try:
+            BikeStation.objects.update_or_create(
+                station_name=row['대여소이름'],
+                defaults={
+                    'parking_bike_count': row['주차된 자전거 수'],
+                    'total_rack_count': row['거치대개수'],
+                    'latitude': row['위도'],
+                    'longitude': row['경도']
+                }
+            )
+        except IntegrityError as e:
+            print(f"Error saving data for {row['대여소이름']}: {e}")
     # 지도 생성하기
     m = folium.Map(location=["37.55", "127.085"], zoom_start=14)
     # 마커 추가하기
@@ -221,9 +236,24 @@ def fetch_bike_data():
         ).add_to(m)
 
     # 지도를 HTML 파일로 저장
-    m.save('templates/bike_map.html')
+    try:
+        m.save('templates/bike_map.html')
+    except Exception as e:
+        print("Error while saving the file:", e)
 
+def fetch_bike_data_view(request):
+    # 여기서 fetch_bike_data 함수를 호출
+    fetch_bike_data()
+    return HttpResponse("Bike data fetched and updated.")
 # 지도 생성 및 표시
 def bike_stations(request):
     # HTML 파일을 Django 템플릿으로 렌더링
     return render(request, 'bike_stations.html')
+
+def bike_stations(request):
+    # '주차된_자전거_수' 대신 'parking_bike_count' 필드를 사용
+    shortage_stations = BikeStation.objects.filter(parking_bike_count__lt=2)
+    context = {
+        'shortage_stations': shortage_stations,
+    }
+    return render(request, 'bike_stations.html', context)
