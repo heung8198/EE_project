@@ -1,10 +1,12 @@
 # myapp/apps.py
 from django.apps import AppConfig
-from django.utils.module_loading import autodiscover_modules
+from django.db.models.signals import post_migrate
 
 class MyappConfig(AppConfig):
     name = 'myapp'
 
     def ready(self):
-        from . import views  # 'tasks.py' 파일에서 함수를 가져옴
-        views.fetch_bike_data()  # 함수를 호출
+        from myapp.views import fetch_bike_data
+        # 서버 시작 시 fetch_bike_data 함수 호출
+        fetch_bike_data()
+        post_migrate.connect(fetch_bike_data, sender=self)

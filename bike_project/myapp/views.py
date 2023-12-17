@@ -3,17 +3,25 @@ import webbrowser
 import requests
 import pandas as pd
 from sqlalchemy import create_engine
-from django.shortcuts import render
 from folium import plugins
 from django.shortcuts import render
-from folium import plugins
-from .models import BikeStation
 from django.db.utils import IntegrityError
 from django.http import HttpResponse
-
+from datetime import datetime
+from myapp.models import BikeStation, PredictionBicycle
+import os
+import time
 # 이하 함수 정의들...
 
-def fetch_bike_data():
+def fetch_bike_data(sender=None, **kwargs):
+    file_path = os.path.join('templates', 'bike_map.html')
+
+    # 파일이 이미 존재하는 경우 삭제
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        print(f"Error while deleting the file: {e}")
     # API 호출 및 데이터 처리 코드
     # 예: requests.get('API_URL')...
     # """
@@ -179,7 +187,6 @@ def fetch_bike_data():
     except Exception as e:
         print("Error while saving to database:", e)
 
-    # PostgreSQL에서 데이터 불러오기
     query = f"SELECT * FROM {table_name}"
     data = pd.read_sql_query(query, engine)
 
@@ -234,26 +241,65 @@ def fetch_bike_data():
                 number=int(available),
             ),
         ).add_to(m)
-
     # 지도를 HTML 파일로 저장
     try:
-        m.save('templates/bike_map.html')
+        m.save(file_path)
     except Exception as e:
         print("Error while saving the file:", e)
+    # HTML 파일이 업데이트될 시간을 주기 위해 5초간 대기
+    time.sleep(5)
 
 def fetch_bike_data_view(request):
+    # # HTML 파일이 업데이트될 시간을 주기 위해 5초간 대기
+    # time.sleep(5)
     # 여기서 fetch_bike_data 함수를 호출
     fetch_bike_data()
     return HttpResponse("Bike data fetched and updated.")
-# 지도 생성 및 표시
-def bike_stations(request):
-    # HTML 파일을 Django 템플릿으로 렌더링
-    return render(request, 'bike_stations.html')
 
-def bike_stations(request):
-    # '주차된_자전거_수' 대신 'parking_bike_count' 필드를 사용
+
+# 기존의 bike_stations 함수를 다음과 같이 수정합니다.
+def bike_station_shortages(request):
     shortage_stations = BikeStation.objects.filter(parking_bike_count__lt=2)
     context = {
         'shortage_stations': shortage_stations,
     }
     return render(request, 'bike_stations.html', context)
+
+# myapp/views.py
+
+def load_prediction_data():
+    df = pd.read_csv("prediction_bicycle.csv", encoding="euc-kr")
+    engine = create_engine('postgresql://postgres:john0312@localhost:5432/realtimebike')
+    df.to_sql('predictionbike', engine, if_exists='replace', index=False)
+
+def bike_station_predictions(request):
+    # 예측 데이터 로딩 및 처리 로직
+    # ...
+    df = pd.read_csv("prediction_bicycle.csv", encoding="euc-kr")
+    for index, row in df.iterrows():
+        PredictionBicycle.objects.update_or_create(
+            station_name=row['대여소명'],
+            rental_date=row['대여일자'],
+            rental_hour=row['대여시간'],
+            expected_usage=row['예상이용건수'],
+            temperature=row['기온(°C)'],
+            wind_speed=row['풍속(m/s)'],
+            rainfall=row['강수량(mm)'],
+            humidity=row['습도(%)'],
+            day_of_week=row[['요일_0', '요일_1', '요일_2', '요일_3', '요일_4', '요일_5', '요일_6']].to_dict()
+        )
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_hour = datetime.now().hour
+
+    # 부족한 대여소 식별
+    shortage_stations = []
+    for prediction in PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour):
+        bike_station = BikeStation.objects.get(station_name=prediction.station_name)
+        if bike_station.parking_bike_count - prediction.expected_usage < 2:
+            shortage_stations.append(bike_station)
+
+    context = {
+        'shortage_stations': shortage_stations,
+    }
+    return render(request, 'bike_predictions.html', context)
+
