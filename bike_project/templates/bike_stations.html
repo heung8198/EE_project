@@ -137,6 +137,9 @@
         <div class="bike-map">
             {% include "bike_map.html" %}
         </div>
-    </div>
+        <!-- 추가할 버튼 -->
+    <a href="{% url 'fetch_weather_data' %}" class="button">날씨 데이터 가져오기</a>
+    <a href="{% url 'fetch_learning_data' %}" class="button">데이터 학습</a>
+</div>
 </body>
 </html>
