@@ -280,6 +280,58 @@ def bike_station_shortages(request):
     }
     return render(request, 'bike_stations.html', context)
 
+def bike_number_prediction(request):
+    #일단 현재 시간을 가져와서 예측된 데이터의 현재 시간에 해당하는
+    # 현재 날짜와 시간을 가져온다.
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_hour = datetime.now().hour
+
+    # 예측 데이터 테이블에서 현재 시간에 해당하는 예측 데이터를 가져온다.(즉 한시간 뒤에 부족해질 예정인 station을 추출)
+    predictions = PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour)
+
+
+
+    # # 현재 날짜와 시간을 구합니다.
+    # current_datetime = datetime.now()
+    #
+    # # 현재 시간에 1시간을 더합니다.
+    # one_hour_later = current_datetime + timedelta(hours=1)
+    #
+    # # 더해진 시간에서 날짜와 시간을 추출합니다.
+    # next_hour_date = one_hour_later.date()
+    # next_hour = one_hour_later.hour
+    #
+    # #만약 현재시간보다 한시간 뒤에 예측 자전거 수를 가져오기 위한 코드는 다음과 같음.
+    # #predictions = PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour)
+
+
+
+    # 부족한 대여소를 저장할 리스트
+    station_predictions = []
+
+    # 각 예측 데이터에 대해 실행
+    for prediction in predictions:
+        # 해당 대여소의 현재 상태를 가져온다.
+        bike_station = BikeStation.objects.get(station_name=prediction.station_name)
+
+        # 현재 주차된 자전거 수와 예측된 이용량을 비교합니다.
+        prediction_after_hour=bike_station.parking_bike_count - prediction.expected_usage # 한 시간 뒤 예측된 자전거 수 선언
+        if prediction_after_hour < 2:
+            station_predictions.append({
+                'station_name': bike_station.station_name,
+                'current_count': bike_station.parking_bike_count,
+                'predicted_count': prediction.expected_usage,
+                'difference': prediction_after_hour
+            })
+
+    # 결과를 템플릿에 전달합니다.
+    context = {
+        'station_predictions': station_predictions  # 예측 데이터 전달
+    }
+
+    return render(request, 'bike_stations.html', context)
+
+
 # myapp/views.py
 def fetch_weather_data(request):
     # 여기에 날씨 데이터를 가져오고 처리하는 코드를 작성
@@ -598,7 +650,7 @@ def fetch_learning_data(request):
         api_data = weather_prediction.drop('대여일자',axis=1)# 예측하기 위해서 예측 데이터 형식과 맞게 대여일자를 drop
 
         predictions = trained_model.predict(api_data)
-        predictions = predictions.round(0) #날씨 데이터에 따라서 자전거 수를 예측
+        predictions = [max(0, x) for x in predictions.round(0)]  # 음수 값을 0으로 변경
 
         weather_prediction.insert(2, '예상이용건수', predictions)
         weather_prediction.insert(0, '대여소명', st) # 원래 있던 데이터 형식과 맞추기 위해서 columns 삽입
@@ -623,34 +675,33 @@ def fetch_learning_data(request):
 #     df2 = pd.read_csv("prediction_bicycle.csv", encoding="euc-kr")
 #     df2.to_sql('prediction_bicycle', engine, if_exists='replace', index=False)
 
-def bike_station_predictions(request):
-    # 예측 데이터 로딩 및 처리 로직
-    # ...
-    df = pd.read_csv("prediction_bicycle.csv", encoding="euc-kr")
-    for index, row in df.iterrows():
-        PredictionBicycle.objects.update_or_create(
-            station_name=row['대여소명'],
-            rental_date=row['대여일자'],
-            rental_hour=row['대여시간'],
-            expected_usage=row['예상이용건수'],
-            temperature=row['기온(°C)'],
-            wind_speed=row['풍속(m/s)'],
-            rainfall=row['강수량(mm)'],
-            humidity=row['습도(%)'],
-            day_of_week=row[['요일_0', '요일_1', '요일_2', '요일_3', '요일_4', '요일_5', '요일_6']].to_dict()
-        )
-    current_date = datetime.now().strftime('%Y-%m-%d')
-    current_hour = datetime.now().hour
-
-    # 부족한 대여소 식별
-    shortage_stations = []
-    for prediction in PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour):
-        bike_station = BikeStation.objects.get(station_name=prediction.station_name)
-        if bike_station.parking_bike_count - prediction.expected_usage < 2:
-            shortage_stations.append(bike_station)
-
-    context = {
-        'shortage_stations': shortage_stations,
-    }
-    return render(request, 'bike_predictions.html', context)
-
+# def bike_station_predictions(request):
+#     # 예측 데이터 로딩 및 처리 로직
+#     # ...
+#     df = pd.read_csv("prediction_bicycle.csv", encoding="euc-kr")
+#     for index, row in df.iterrows():
+#         PredictionBicycle.objects.update_or_create(
+#             station_name=row['대여소명'],
+#             rental_date=row['대여일자'],
+#             rental_hour=row['대여시간'],
+#             expected_usage=row['예상이용건수'],
+#             temperature=row['기온(°C)'],
+#             wind_speed=row['풍속(m/s)'],
+#             rainfall=row['강수량(mm)'],
+#             humidity=row['습도(%)'],
+#             day_of_week=row[['요일_0', '요일_1', '요일_2', '요일_3', '요일_4', '요일_5', '요일_6']].to_dict()
+#         )
+#     current_date = datetime.now().strftime('%Y-%m-%d')
+#     current_hour = datetime.now().hour
+#
+#     # 부족한 대여소 식별
+#     shortage_stations = []
+#     for prediction in PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour):
+#         bike_station = BikeStation.objects.get(station_name=prediction.station_name)
+#         if bike_station.parking_bike_count - prediction.expected_usage < 2:
+#             shortage_stations.append(bike_station)
+#
+#     context = {
+#         'shortage_stations': shortage_stations,
+#     }
+#     return render(request, 'bike_predictions.html', context)

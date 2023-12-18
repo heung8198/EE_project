@@ -158,17 +158,17 @@
     <div class="overlay-container">
         <div class="bike-list">
             <h1>광진구 따릉이 대여소</h1>
-            {% if shortage_stations %}
-                <p>다음 대여소에서 자전거가 부족합니다:</p>
+            {% if station_predictions %}
+                <p>다음 대여소에서 한시간 뒤 자전거가 부족합니다:</p>
                 <table>
                     <tr>
                         <th>대여소 이름</th>
-                        <th>주차된 자전거 수</th>
+                        <th>한시간 뒤 예상되는 주차된 자전거 수</th>
                     </tr>
-                    {% for station in shortage_stations %}
+                    {% for prediction in station_predictions %}
                         <tr>
-                            <td>{{ station.station_name }}</td>
-                            <td>{{ station.parking_bike_count }}</td>
+                            <td>{{ prediction.station_name }}</td>
+                            <td>{{ prediction.difference }}</td>
                         </tr>
                     {% endfor %}
                 </table>
