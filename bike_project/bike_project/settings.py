@@ -27,9 +27,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-!w1_!+)6+%)mkwfx63$8+*m(jobtkn)6x6e75*%sbxto5^l+0f'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False # 배포 세팅1. 디버그모드를 꺼야 배포 가능!
 
-ALLOWED_HOSTS = []
+# 배포 세팅2. 내 아이디
+ALLOWED_HOSTS = [
+    '(pythonanywhere ID).pythonanywhere.com'
+] # 이 주소가 아니라 다른 주소로 접근하면 막을 수 있도록 
 
 
 # Application definition
@@ -142,7 +145,7 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # settings.py
-
+DATE_FORMAT = 'Y-m-d' # 날짜데이터 형식 변경
 
 # CELERY_TIMEZONE 설정이 필요하다면 설정하세요
 # CELERY_TIMEZONE = 'UTC'
