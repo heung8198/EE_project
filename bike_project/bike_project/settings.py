@@ -31,8 +31,8 @@ DEBUG = False # 배포 세팅1. 디버그모드를 꺼야 배포 가능!
 
 # 배포 세팅2. 내 아이디
 ALLOWED_HOSTS = [
-    '(pythonanywhere ID).pythonanywhere.com'
-] # 이 주소가 아니라 다른 주소로 접근하면 막을 수 있도록 
+    '*'
+] # 이 주소가 아니라 다른 주소로 접근하면 막을 수 있도록
 
 
 # Application definition
@@ -135,10 +135,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 정적 파일 경로 설정
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
-
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, 'static'),
+# ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
