@@ -25,6 +25,7 @@ from datetime import datetime, date, timedelta
 from urllib.parse import urlencode
 from urllib.parse import quote_plus
 from django.conf import settings
+from django.db import connection
 
 # 이하 함수 정의들...
 
@@ -272,7 +273,7 @@ def fetch_bike_data_view(request):
     return HttpResponse("Bike data fetched and updated.")
 
 
-# 기존의 bike_stations 함수를 다음과 같이 수정합니다.
+    # 기존의 bike_stations 함수를 다음과 같이 수정합니다.
 def bike_station_shortages(request):
     shortage_stations = BikeStation.objects.filter(parking_bike_count__lt=2)
     context = {
@@ -281,56 +282,51 @@ def bike_station_shortages(request):
     return render(request, 'bike_stations.html', context)
 
 def bike_number_prediction(request):
-    #일단 현재 시간을 가져와서 예측된 데이터의 현재 시간에 해당하는
-    # 현재 날짜와 시간을 가져온다.
-    current_date = datetime.now().strftime('%Y-%m-%d')
-    current_hour = datetime.now().hour
+    one_hour_later = datetime.now() + timedelta(hours=1)
+    future_date = one_hour_later.strftime('%Y-%m-%d')
+    future_hour = one_hour_later.hour
 
-    # 예측 데이터 테이블에서 현재 시간에 해당하는 예측 데이터를 가져온다.(즉 한시간 뒤에 부족해질 예정인 station을 추출)
-    predictions = PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour)
+    # 예측 데이터 가져오기
+    with connection.cursor() as cursor:
+        query = """
+            SELECT station_name, expected_usage
+            FROM prediction_bicycle
+            WHERE rental_date = %s AND rental_hour = %s;
+        """
+        cursor.execute(query, [future_date, future_hour])
+        predictions = cursor.fetchall()
 
-
-
-    # # 현재 날짜와 시간을 구합니다.
-    # current_datetime = datetime.now()
-    #
-    # # 현재 시간에 1시간을 더합니다.
-    # one_hour_later = current_datetime + timedelta(hours=1)
-    #
-    # # 더해진 시간에서 날짜와 시간을 추출합니다.
-    # next_hour_date = one_hour_later.date()
-    # next_hour = one_hour_later.hour
-    #
-    # #만약 현재시간보다 한시간 뒤에 예측 자전거 수를 가져오기 위한 코드는 다음과 같음.
-    # #predictions = PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour)
-
-
-
-    # 부족한 대여소를 저장할 리스트
     station_predictions = []
+    for station_name, expected_usage in predictions:
+        # 해당 대여소의 현재 상태를 가져온다
+        with connection.cursor() as cursor:
+            query = """
+                SELECT parking_bike_count
+                FROM myapp_bikestation
+                WHERE station_name = %s;
+            """
+            cursor.execute(query, [station_name])
+            bike_station_info = cursor.fetchone()
 
-    # 각 예측 데이터에 대해 실행
-    for prediction in predictions:
-        # 해당 대여소의 현재 상태를 가져온다.
-        bike_station = BikeStation.objects.get(station_name=prediction.station_name)
+        # bike_station_info가 존재하면 계산 수행
+        if bike_station_info:
+            parking_bike_count = bike_station_info[0]
+            prediction_after_hour = parking_bike_count - expected_usage
+            print(
+                f"Station: {station_name}, Current: {parking_bike_count}, Expected: {expected_usage}, Difference: {prediction_after_hour}")
+            if prediction_after_hour < 1:
+                station_predictions.append({
+                    'station_name': station_name,
+                    'current_count': parking_bike_count,
+                    'predicted_count': expected_usage,
+                    'difference': prediction_after_hour
+                })
 
-        # 현재 주차된 자전거 수와 예측된 이용량을 비교합니다.
-        prediction_after_hour=bike_station.parking_bike_count - prediction.expected_usage # 한 시간 뒤 예측된 자전거 수 선언
-        if prediction_after_hour < 2:
-            station_predictions.append({
-                'station_name': bike_station.station_name,
-                'current_count': bike_station.parking_bike_count,
-                'predicted_count': prediction.expected_usage,
-                'difference': prediction_after_hour
-            })
-
-    # 결과를 템플릿에 전달합니다.
+    # 결과를 템플릿에 전달
     context = {
-        'station_predictions': station_predictions  # 예측 데이터 전달
+        'station_predictions': station_predictions
     }
-
     return render(request, 'bike_stations.html', context)
-
 
 # myapp/views.py
 def fetch_weather_data(request):
@@ -650,15 +646,25 @@ def fetch_learning_data(request):
         api_data = weather_prediction.drop('대여일자',axis=1)# 예측하기 위해서 예측 데이터 형식과 맞게 대여일자를 drop
 
         predictions = trained_model.predict(api_data)
-        predictions = [max(0, x) for x in predictions.round(0)]  # 음수 값을 0으로 변경
+        predictions = [0 if x < 0 else round(x) if not x.is_integer() else x for x in predictions]  # 음수 값을 0으로 변경
 
         weather_prediction.insert(2, '예상이용건수', predictions)
         weather_prediction.insert(0, '대여소명', st) # 원래 있던 데이터 형식과 맞추기 위해서 columns 삽입
 
         weather_prediction["예상이용건수"] = weather_prediction["예상이용건수"].astype("int32")#예측된 값 형식 int 형으로 바꾸기
+        weather_prediction["대여일자"] = weather_prediction["대여일자"].astype("datetime64[ns]")
+        weather_prediction["대여시간"] = weather_prediction["대여시간"].astype("int32")
+        weather_prediction["대여소명"] = weather_prediction["대여소명"].astype("category")
+        weather_prediction["기온(°C)"] = weather_prediction["기온(°C)"].astype("int32")
+        weather_prediction["풍속(m/s)"] = weather_prediction["풍속(m/s)"].astype("int32")
+        weather_prediction["강수량(mm)"] = weather_prediction["강수량(mm)"].astype("int32")
+        weather_prediction["습도(%)"] = weather_prediction["습도(%)"].astype("int32")
+
+        weather_prediction.rename(columns={'예상이용건수': 'expected_usage', '대여일자': 'rental_date',
+                                           '대여시간': 'rental_hour','대여소명':'station_name'}, inplace=True)
 
         prediction_bicycle = pd.concat([prediction_bicycle, weather_prediction])#예측된 값들 합쳐서 하나의 데이터프레임 만들기
-
+        # prediction_bicycle.to_csv('prediction_bicycle.csv',index=False,encoding = 'cp949')
     try:
         prediction_bicycle.to_sql(tablename, engine, if_exists="replace", index=False)
     except Exception as e:
@@ -667,41 +673,3 @@ def fetch_learning_data(request):
     # return 0
         # 처리가 완료된 후 사용자에게 메시지를 반환
     return HttpResponse("22년 자전거 학습 데이터가 성공적으로 업데이트되었습니다.")
-    # print(data)
-# def save_data():
-#     engine = create_engine('postgresql://postgres:john0312@localhost:5432/realtimebike')
-#     df1 = pd.read_csv("bike.csv", encoding="euc-kr")
-#     df1.to_sql('pastbike', engine, if_exists='replace', index=False)
-#     df2 = pd.read_csv("prediction_bicycle.csv", encoding="euc-kr")
-#     df2.to_sql('prediction_bicycle', engine, if_exists='replace', index=False)
-
-# def bike_station_predictions(request):
-#     # 예측 데이터 로딩 및 처리 로직
-#     # ...
-#     df = pd.read_csv("prediction_bicycle.csv", encoding="euc-kr")
-#     for index, row in df.iterrows():
-#         PredictionBicycle.objects.update_or_create(
-#             station_name=row['대여소명'],
-#             rental_date=row['대여일자'],
-#             rental_hour=row['대여시간'],
-#             expected_usage=row['예상이용건수'],
-#             temperature=row['기온(°C)'],
-#             wind_speed=row['풍속(m/s)'],
-#             rainfall=row['강수량(mm)'],
-#             humidity=row['습도(%)'],
-#             day_of_week=row[['요일_0', '요일_1', '요일_2', '요일_3', '요일_4', '요일_5', '요일_6']].to_dict()
-#         )
-#     current_date = datetime.now().strftime('%Y-%m-%d')
-#     current_hour = datetime.now().hour
-#
-#     # 부족한 대여소 식별
-#     shortage_stations = []
-#     for prediction in PredictionBicycle.objects.filter(rental_date=current_date, rental_hour=current_hour):
-#         bike_station = BikeStation.objects.get(station_name=prediction.station_name)
-#         if bike_station.parking_bike_count - prediction.expected_usage < 2:
-#             shortage_stations.append(bike_station)
-#
-#     context = {
-#         'shortage_stations': shortage_stations,
-#     }
-#     return render(request, 'bike_predictions.html', context)
