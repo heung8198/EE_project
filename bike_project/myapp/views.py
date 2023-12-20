@@ -265,12 +265,17 @@ def fetch_bike_data(sender=None, **kwargs):
     # HTML 파일이 업데이트될 시간을 주기 위해 5초간 대기
     time.sleep(5)
 
+
+
 def fetch_bike_data_view(request):
     # # HTML 파일이 업데이트될 시간을 주기 위해 5초간 대기
     # time.sleep(5)
     # 여기서 fetch_bike_data 함수를 호출
     fetch_bike_data()
     return HttpResponse("Bike data fetched and updated.")
+
+
+
 
 
     # 기존의 bike_stations 함수를 다음과 같이 수정합니다.
@@ -280,6 +285,13 @@ def bike_station_shortages(request):
         'shortage_stations': shortage_stations,
     }
     return render(request, 'bike_stations.html', context)
+
+
+
+
+
+
+
 
 def bike_number_prediction(request):
     one_hour_later = datetime.now() + timedelta(hours=1)
@@ -327,6 +339,13 @@ def bike_number_prediction(request):
         'station_predictions': station_predictions
     }
     return render(request, 'bike_stations.html', context)
+
+
+
+
+
+
+
 
 # myapp/views.py
 def fetch_weather_data(request):
@@ -393,6 +412,13 @@ def fetch_weather_data(request):
 
     # 각 예보 카테고리에 대한 변수를 초기화합니다.
     data_dict = {}
+
+
+
+
+
+
+
 
     def add_weekday_columns(df):
         # 요일에 대한 열을 추가
@@ -475,6 +501,11 @@ def fetch_weather_data(request):
 
     # 처리가 완료된 후 사용자에게 메시지를 반환
     return HttpResponse("날씨 데이터가 성공적으로 업데이트되었습니다.")
+
+
+
+
+
 
 def fetch_learning_data(request):
 
