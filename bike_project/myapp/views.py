@@ -49,7 +49,7 @@ def fetch_bike_data(sender=None, **kwargs):
         import http.client as http_client
     except ImportError:
         import httplib as http_client
-    http_client.HTTPConnection.debuglevel = 0
+        http_client.HTTPConnection.debuglevel = 0
 
     apikey = "796158756e6a75393434677248417a"
 
